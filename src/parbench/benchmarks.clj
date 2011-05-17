@@ -1,5 +1,6 @@
 (ns parbench.benchmarks
   (:require [com.twinql.clojure.http :as http])
+  (:use [lamina core] [aleph http])
   (:import java.util.Calendar))
 
 (def default-http-parameters
@@ -10,13 +11,15 @@
 
 (defn run-request [request]
   "Runs a single HTTP request"
-  (dosync (alter request assoc :state :requested :requested-at (timestamp)))
-  (let [result (http/get (:url @request) :parameters default-http-parameters)]
+  (let [response (sync-http-request
+                    {:method :get :url (:url @request)})
+        headers  (:headers response)]
     (dosync
       (alter request assoc
         :responded-at (timestamp)
         :state        :responded
-        :status       (:code result)))))
+        :status       (:status response))
+        :content-length (:content-length headers))))
 
 (defn run-requests [request-list]
   (doseq [request request-list]
